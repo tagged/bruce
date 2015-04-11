@@ -1,0 +1,42 @@
+description "producer daemon for Apache Kafka"
+author "Cameron Norman <camerontnorman@gmail.com>"
+
+start on filesystem
+stop on runlevel [016] or unmounting-filesystem
+
+env user=nobody
+env group=nogroup
+
+env STATUSPORT=9090
+# Defaults, change in /etc/sysconfig/bruce or /etc/default/bruce
+env PROTOCOL_VERSION=0
+env MSG_BUFFER_MAX=65536
+env INPUT_SOCKET_NAME=/var/run/bruce/bruce.socket
+env CONFIG_FILE=/etc/bruce/bruce_conf.xml
+
+pre-start script
+  test -x "$(which bruce)" || { stop; exit 0; }
+
+  if test -r /etc/default/bruce ; then
+    . /etc/default/bruce
+  elif test -r /etc/sysconfig/bruce ; then
+    . /etc/sysconfig/bruce
+  fi
+  
+  install -o "$user" -g "$group" -d $(dirname "$INPUT_SOCKET_NAME")
+end script
+
+script
+  if test -r /etc/default/bruce ; then
+    . /etc/default/bruce
+  elif test -r /etc/sysconfig/bruce ; then
+    . /etc/sysconfig/bruce
+  fi
+  
+  exec runuser -m -u "$user" -g "$group" bruce \
+    --protocol_version "$PROTOCOL_VERSION" \
+    --msg_buffer_max "$MSG_BUFFER_MAX" \
+    --status_port "$STATUSPORT" \
+    --receive_socket_name "$INPUT_SOCKET_NAME" \
+    --config_path "$CONFIG_FILE"
+end script
